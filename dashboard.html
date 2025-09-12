@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comparison Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+
+        .container {
+            display: grid;
+            grid-template-rows: auto auto auto;
+            min-height: 100vh;
+            gap: 1rem;
+            padding: 1rem;
+        }
+
+        .top-container {
+            display: grid;
+            grid-template-columns: 1fr 3fr;
+            gap: 1rem;
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-rows: auto auto auto;
+            }
+
+            .top-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto;
+            }
+        }
+
+        .pane {
+            background-color: #ffffff;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            overflow-y: auto;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .comparison-table {
+            border-collapse: collapse;
+            font-size: 0.875rem;
+            width: 100%;
+            table-layout: fixed;
+            min-width: 700px;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border: 1px solid #e5e7eb;
+            vertical-align: top;
+            word-break: break-word;
+            white-space: normal;
+        }
+
+        .comparison-table th {
+            background-color: #f9fafb;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
+        .comparison-table tr:hover {
+            background-color: #f3f4f6;
+        }
+
+        .changed-cell {
+            background-color: #fef2f2;
+            animation: pulse-bg 1s ease-out infinite;
+        }
+
+        @keyframes pulse-bg {
+
+            0%,
+            100% {
+                background-color: #fef2f2;
+            }
+
+            50% {
+                background-color: #fee2e2;
+            }
+        }
+
+        .input-field {
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            border: 1px solid #d1d5db;
+            transition: border-color 0.2s;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        .button {
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            border-radius: 0.5rem;
+            transition: background-color 0.2s;
+        }
+
+        .apply-button {
+            background-color: #1f2937;
+            color: #ffffff;
+        }
+
+        .apply-button:hover {
+            background-color: #374151;
+        }
+
+        .apply-button:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        /* Scrollable boxes */
+        .table-scroll {
+            max-height: 220px;
+            /* shows about 4 rows */
+            overflow-y: auto;
+        }
+
+        .rules-box {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .chat-box {
+            max-height: 250px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 p-4">
+    <div class="container">
+        <div class="top-container">
+            <!-- Left Pane for PDF Viewer -->
+            <div class="pane flex flex-col">
+                <h2 class="text-xl font-bold mb-4 text-gray-800">Uploaded File</h2>
+                <div class="w-full flex-grow border border-gray-300 rounded-md overflow-hidden">
+                    <iframe id="pdf-viewer" class="w-full h-full" src="" frameborder="0"></iframe>
+                </div>
+                <p id="pdf-message" class="mt-4 text-sm text-gray-500 text-center">Loading PDF from URL...</p>
+            </div>
+
+            <!-- Right Pane for Data Comparison -->
+            <div class="pane flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-gray-800">Comparison</h2>
+                    <button id="apply-button" class="button apply-button">Apply Changes</button>
+                </div>
+
+                <div id="summary-info" class="mb-4 text-gray-600 hidden">
+                    <p><strong>Dealer:</strong> <span id="dealer-name"></span></p>
+                    <p><strong>Car:</strong> <span id="car-info"></span></p>
+                </div>
+
+                <div id="status-message" class="hidden text-center py-2 text-sm"></div>
+                <div id="loading-indicator" class="text-center py-4">
+                    <svg class="animate-spin h-6 w-6 text-gray-400 inline-block" xmlns="http://www.w3.org/2000/svg"
+                        fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                        </circle>
+                        <path class="opacity-75" fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                        </path>
+                    </svg>
+                    <span class="ml-2">Loading data...</span>
+                </div>
+                <div class="overflow-x-auto flex-grow pb-4 table-scroll">
+                    <table id="comparison-table" class="comparison-table hidden">
+                        <thead>
+                            <tr>
+                                <th>Condition Type</th>
+                                <th>Value</th>
+                                <th>Value EUR</th>
+                                <th>Remark</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rules Section -->
+        <div class="pane">
+            <h2 class="text-xl font-bold mb-4 text-gray-800">Rules</h2>
+            <div id="rules-box"
+                class="rules-box w-full p-4 bg-gray-50 border border-gray-300 rounded-md text-gray-700 whitespace-pre-wrap">
+                Loading rules...
+            </div>
+        </div>
+
+        <!-- Bottom Pane for Chat -->
+        <div class="pane">
+            <h2 class="text-xl font-bold mb-4 text-gray-800">Chat</h2>
+            <div class="w-full h-full border border-gray-300 rounded-md overflow-hidden flex flex-col">
+                <div class="flex-grow p-4 overflow-y-auto text-gray-700 chat-box">
+                    <p class="mb-2">Hello! How can I help you with your data?</p>
+                </div>
+                <div class="p-4 bg-gray-50 border-t border-gray-200">
+                    <input type="text" placeholder="Type your message..."
+                        class="w-full p-2 rounded-md border border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const tableBody = document.getElementById('table-body');
+            const comparisonTable = document.getElementById('comparison-table');
+            const applyButton = document.getElementById('apply-button');
+            const pdfViewer = document.getElementById('pdf-viewer');
+            const pdfMessage = document.getElementById('pdf-message');
+            const loadingIndicator = document.getElementById('loading-indicator');
+            const statusMessage = document.getElementById('status-message');
+            const summaryInfo = document.getElementById('summary-info');
+            const dealerNameElement = document.getElementById('dealer-name');
+            const carInfoElement = document.getElementById('car-info');
+            const rulesBox = document.getElementById('rules-box');
+
+            let fullData = [];
+
+            const showStatus = (message, isError = false) => {
+                statusMessage.textContent = message;
+                statusMessage.className = `text-center py-2 text-sm ${isError ? 'text-red-500' : 'text-green-500'}`;
+                statusMessage.classList.remove('hidden');
+                setTimeout(() => {
+                    statusMessage.classList.add('hidden');
+                }, 3000);
+            };
+
+            const mapData = (rawData) => {
+                return rawData.map(item => ({
+                    ...item,
+                    value: { original: item.value_original, extracted: item.value_extracted },
+                    value_eur: { original: item.value_eur_original, extracted: item.value_eur_extracted },
+                    remark: { original: item.remark_original, extracted: item.remark_extracted },
+                }));
+            };
+
+            const renderTable = (data) => {
+                tableBody.innerHTML = '';
+                if (!data || data.length === 0) {
+                    loadingIndicator.innerHTML = '<span class="text-gray-500">No data to display.</span>';
+                    return;
+                }
+
+                const firstItem = data[0];
+                if (firstItem) {
+                    dealerNameElement.textContent = firstItem.dealer_name;
+                    carInfoElement.textContent = `${firstItem.car_mark} ${firstItem.car_model}`;
+                    summaryInfo.classList.remove('hidden');
+                }
+
+                loadingIndicator.classList.add('hidden');
+                comparisonTable.classList.remove('hidden');
+
+                data.forEach((item, rowIndex) => {
+                    const row = document.createElement('tr');
+                    const displayFields = ['condition_type', 'value', 'value_eur', 'remark'];
+
+                    displayFields.forEach(field => {
+                        const cell = document.createElement('td');
+                        cell.className = "px-6 py-4 text-gray-500";
+
+                        const fieldValue = item[field];
+
+                        if (fieldValue && typeof fieldValue === 'object') {
+                            const originalValue = fieldValue.original ?? '';
+                            const extractedValue = fieldValue.extracted ?? '';
+                            const hasChanged = originalValue.toString() !== extractedValue.toString();
+
+                            cell.innerHTML = `
+                <div><strong>${originalValue || '-'}</strong></div>
+                <input type="text" class="input-field mt-1"
+                  value="${extractedValue || ''}" 
+                  data-row-index="${rowIndex}" 
+                  data-field-name="${field}">
+              `;
+
+                            if (hasChanged) cell.classList.add('changed-cell');
+                        } else {
+                            cell.textContent = fieldValue ?? '-';
+                        }
+
+                        row.appendChild(cell);
+                    });
+
+                    tableBody.appendChild(row);
+                });
+
+                document.querySelectorAll('.input-field').forEach(input => {
+                    input.addEventListener('input', (e) => {
+                        const rowIndex = parseInt(e.target.dataset.rowIndex);
+                        const fieldName = e.target.dataset.fieldName;
+                        const newValue = e.target.value;
+
+                        if (fullData[rowIndex] && fullData[rowIndex][fieldName]) {
+                            fullData[rowIndex][fieldName].extracted = newValue;
+                        }
+
+                        const cell = e.target.parentElement.parentElement;
+                        const originalValue = fullData[rowIndex][fieldName].original;
+                        if (newValue !== (originalValue ?? '')) {
+                            cell.classList.add('changed-cell');
+                        } else {
+                            cell.classList.remove('changed-cell');
+                        }
+                    });
+                });
+            };
+
+            applyButton.addEventListener('click', async () => {
+                try {
+                    const response = await fetch('http://localhost:5680/webhook-test/apply_changes', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(fullData)
+                    });
+
+                    if (response.ok) {
+                        showStatus('Changes applied successfully!');
+                    } else {
+                        showStatus('Failed to apply changes.', true);
+                    }
+                } catch (error) {
+                    console.error('Error sending updated data:', error);
+                    showStatus('Error applying changes.', true);
+                }
+            });
+
+            const params = new URLSearchParams(window.location.search);
+            const batchId = params.get('batch_id');
+            const pdfData = params.get('pdfData');
+
+            if (batchId) {
+                fetch(`http://localhost:5000/get-data?batch_id=${batchId}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        fullData = mapData(data.data);
+                        renderTable(fullData);
+                    })
+                    .catch(err => {
+                        console.error('Failed to fetch batch data:', err);
+                        loadingIndicator.innerHTML = '<span class="text-red-500">Error fetching batch data.</span>';
+                    });
+            } else {
+                loadingIndicator.innerHTML = '<span class="text-gray-500">No batch_id provided in URL.</span>';
+            }
+
+            if (pdfData) {
+                try {
+                    const pdfUrl = `data:application/pdf;base64,${pdfData}`;
+                    pdfViewer.src = pdfUrl;
+                    pdfMessage.textContent = 'PDF loaded from URL.';
+                } catch (e) {
+                    pdfMessage.textContent = 'Error loading PDF.';
+                }
+            } else {
+                pdfMessage.textContent = 'No PDF data found in URL.';
+            }
+
+            // Fetch rules
+            fetch("http://localhost:5000/rules")
+                .then(res => res.json())
+                .then(data => {
+                    rulesBox.textContent = data.rules || "No rules found.";
+                })
+                .catch(() => {
+                    rulesBox.textContent = "Error fetching rules.";
+                });
+        });
+    </script>
+</body>
+
+</html>
