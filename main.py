@@ -3,8 +3,11 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 import psycopg2
 import psycopg2.extras
-
 import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 app = FastAPI()
 
@@ -12,15 +15,22 @@ app = FastAPI()
 # Database connection
 # -------------------------------
 def get_db_connection():
-    return psycopg2.connect(
-        host="db.eemajsnjzkpaebbppdaj.supabase.co",
-        hostaddr="2a05:d016:571:a40c:6cc0:da12:a79:e86b",
-        database="postgres",
-        user="postgres",
-        password=os.getenv("SUPABASE_DB_PASSWORD"),
-        port="5432",
-        sslmode="require"
-    )
+    try:
+        database_url = os.getenv("DATABASE_URL")
+        if not database_url:
+            raise HTTPException(status_code=500, detail="Database URL not found in environment")
+        
+        # Print connection attempt for debugging
+        print(f"Attempting to connect to database...")
+        conn = psycopg2.connect(database_url)
+        print("Database connection successful!")
+        return conn
+    except psycopg2.Error as e:
+        print(f"Database connection error: {e}")
+        raise HTTPException(status_code=500, detail=f"Database connection failed: {str(e)}")
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 # -------------------------------
 # Serve dashboard HTML

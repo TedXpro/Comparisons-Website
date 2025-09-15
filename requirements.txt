@@ -2,9 +2,9 @@ uvicorn[standard]
 mysql-connector-python
 pydantic
 psycopg2-binary
-
+python-dotenv
 fastapi
 uvicorn[standard]
-mysql-connector-python
 pydantic
 psycopg2-binary
+python-dotenv
