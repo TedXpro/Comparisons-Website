@@ -1,8 +1,9 @@
 import uuid
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 import mysql.connector
 
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 
 app = FastAPI()
 
@@ -25,11 +26,16 @@ def serve_dashboard(batch_id: str):
 @app.post("/upload-data")
 async def upload_data(request: Request):
     body = await request.json()
+    
+    # # Ensure body is a non-empty list
+    if not body or not isinstance(body, list) or all(not bool(item) for item in body):
+        raise HTTPException(status_code=400, detail="Empty or invalid payload. No data stored.")
+    
     batch_id = str(uuid.uuid4())
 
     print("Received payload:")
-    for item in body :
-        print (item)
+    for item in body:
+        print(item)
         print("\n")
         
     conn = get_db_connection()
@@ -107,13 +113,41 @@ def get_data(batch_id: str):
 # -------------------------------
 # Rules endpoint (returns long string)
 # -------------------------------
+
+# Endpoint to store rules
+@app.post("/rules")
+async def store_rule(request: Request):
+    rule = await request.json()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        
+        sql = "INSERT INTO rules (batch_id, rule_text) VALUES (%s, %s)"
+        cursor.execute(sql, (rule.get("batch_id"), rule.get("rules")))
+        conn.commit()
+        return {"status": "success", "message": "Rule stored successfully."}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+# Endpoint to fetch rules by batch_id
 @app.get("/rules")
-def get_rules():
-    rules_text = """
-    These are the rules for comparison:
-    1. Value_original vs Value_extracted must be checked for mismatches.
-    2. Value_eur_original vs Value_eur_extracted should be validated.
-    3. Remarks need to be compared and flagged if inconsistent.
-    4. Other domain-specific rules can be added here...
-    """
-    return {"rules": rules_text.strip()}
+def get_rules(batch_id: str):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        sql = "SELECT * FROM rules WHERE batch_id = %s"
+        cursor.execute(sql, (batch_id,))
+        results = cursor.fetchall()
+        if not results:
+            return {"rules": []}
+        # Return only the rule_texts if needed
+        return {"rules": [row["rule_text"] for row in results]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()

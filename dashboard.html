@@ -133,7 +133,6 @@
         /* Scrollable boxes */
         .table-scroll {
             max-height: 220px;
-            /* shows about 4 rows */
             overflow-y: auto;
         }
 
@@ -365,8 +364,20 @@
                         console.error('Failed to fetch batch data:', err);
                         loadingIndicator.innerHTML = '<span class="text-red-500">Error fetching batch data.</span>';
                     });
+
+                // Fetch rules based on batch_id
+                fetch(`http://localhost:5000/rules?batch_id=${batchId}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        console.log(data);
+                        rulesBox.textContent = data.rules || "No rules found.";
+                    })
+                    .catch(() => {
+                        rulesBox.textContent = "Error fetching rules.";
+                    });
             } else {
                 loadingIndicator.innerHTML = '<span class="text-gray-500">No batch_id provided in URL.</span>';
+                rulesBox.textContent = 'No batch_id provided, cannot fetch rules.';
             }
 
             if (pdfData) {
@@ -380,16 +391,6 @@
             } else {
                 pdfMessage.textContent = 'No PDF data found in URL.';
             }
-
-            // Fetch rules
-            fetch("http://localhost:5000/rules")
-                .then(res => res.json())
-                .then(data => {
-                    rulesBox.textContent = data.rules || "No rules found.";
-                })
-                .catch(() => {
-                    rulesBox.textContent = "Error fetching rules.";
-                });
         });
     </script>
 </body>
