@@ -1,8 +1,9 @@
-import uuid
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 import psycopg2
 import psycopg2.extras
+
+import os
 
 app = FastAPI()
 
@@ -15,7 +16,7 @@ def get_db_connection():
         hostaddr="2a05:d016:571:a40c:6cc0:da12:a79:e86b",
         database="postgres",
         user="postgres",
-        password="b4hqZ@Btv7vW8L4",  
+        password=os.getenv("SUPABASE_DB_PASSWORD"),
         port="5432",
         sslmode="require"
     )
