@@ -1,3 +1,4 @@
+import uuid
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 import psycopg2
