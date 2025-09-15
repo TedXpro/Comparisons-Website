@@ -225,6 +225,10 @@
     </div>
 
     <script>
+        // === Backend URLs (edit here for easy changes) ===
+        const API_BASE_URL = 'http://localhost:5000';
+        const APPLY_CHANGES_URL = 'http://localhost:5680/webhook-test/apply_changes';
+
         document.addEventListener('DOMContentLoaded', () => {
             const tableBody = document.getElementById('table-body');
             const comparisonTable = document.getElementById('comparison-table');
@@ -239,6 +243,11 @@
             const rulesBox = document.getElementById('rules-box');
 
             let fullData = [];
+            const params = new URLSearchParams(window.location.search);
+            const batchId = params.get('batch_id');
+            const pdfData = params.get('pdfData');
+            const sessionId = params.get('session_id');
+            console.log("Session ID:", sessionId);
 
             const showStatus = (message, isError = false) => {
                 statusMessage.textContent = message;
@@ -330,12 +339,16 @@
                 });
             };
 
+
             applyButton.addEventListener('click', async () => {
                 try {
-                    const response = await fetch('http://localhost:5680/webhook-test/apply_changes', {
+                    const response = await fetch(APPLY_CHANGES_URL, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(fullData)
+                        body: JSON.stringify({
+                            sessionId: sessionId,
+                            data: fullData
+                        })
                     });
 
                     if (response.ok) {
@@ -349,12 +362,10 @@
                 }
             });
 
-            const params = new URLSearchParams(window.location.search);
-            const batchId = params.get('batch_id');
-            const pdfData = params.get('pdfData');
+
 
             if (batchId) {
-                fetch(`http://localhost:5000/get-data?batch_id=${batchId}`)
+                fetch(`${API_BASE_URL}/get-data?batch_id=${batchId}`)
                     .then(res => res.json())
                     .then(data => {
                         fullData = mapData(data.data);
@@ -366,7 +377,7 @@
                     });
 
                 // Fetch rules based on batch_id
-                fetch(`http://localhost:5000/rules?batch_id=${batchId}`)
+                fetch(`${API_BASE_URL}/rules?batch_id=${batchId}`)
                     .then(res => res.json())
                     .then(data => {
                         console.log(data);

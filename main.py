@@ -1,33 +1,40 @@
 import uuid
 from fastapi import FastAPI, HTTPException, Request
-import mysql.connector
-
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
+import psycopg2
+import psycopg2.extras
 
 app = FastAPI()
 
+# -------------------------------
+# Database connection
+# -------------------------------
 def get_db_connection():
-    return mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="root",
-        database="dashboard_db"
+    return psycopg2.connect(
+        host="db.eemajsnjzkpaebbppdaj.supabase.co",
+        hostaddr="2a05:d016:571:a40c:6cc0:da12:a79:e86b",
+        database="postgres",
+        user="postgres",
+        password="b4hqZ@Btv7vW8L4",  
+        port="5432",
+        sslmode="require"
     )
 
+# -------------------------------
+# Serve dashboard HTML
+# -------------------------------
 @app.get("/dashboard")
 def serve_dashboard(batch_id: str):
-    # Serve the HTML page
     return FileResponse("dashboard.html")
 
 # -------------------------------
-# Upload endpoint
+# Upload comparisons endpoint
 # -------------------------------
 @app.post("/upload-data")
 async def upload_data(request: Request):
     body = await request.json()
     
-    # # Ensure body is a non-empty list
+    # Ensure body is a non-empty list
     if not body or not isinstance(body, list) or all(not bool(item) for item in body):
         raise HTTPException(status_code=400, detail="Empty or invalid payload. No data stored.")
     
@@ -90,16 +97,16 @@ async def upload_data(request: Request):
     cursor.close()
     conn.close()
 
-    dashboard_url = f"http://localhost:5000/dashboard?batch_id={batch_id}"
+    dashboard_url = f"http://localhost:8000/dashboard?batch_id={batch_id}"
     return {"message": "Data stored", "items_count": len(body), "dashboard_url": dashboard_url}
 
 # -------------------------------
-# Get data endpoint
+# Get comparisons by batch_id
 # -------------------------------
 @app.get("/get-data")
 def get_data(batch_id: str):
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     cursor.execute("SELECT * FROM comparisons WHERE batch_id = %s", (batch_id,))
     rows = cursor.fetchall()
@@ -109,19 +116,15 @@ def get_data(batch_id: str):
 
     return {"batch_id": batch_id, "data": rows}
 
-
 # -------------------------------
-# Rules endpoint (returns long string)
+# Store rules endpoint
 # -------------------------------
-
-# Endpoint to store rules
 @app.post("/rules")
 async def store_rule(request: Request):
     rule = await request.json()
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        
         sql = "INSERT INTO rules (batch_id, rule_text) VALUES (%s, %s)"
         cursor.execute(sql, (rule.get("batch_id"), rule.get("rules")))
         conn.commit()
@@ -133,18 +136,19 @@ async def store_rule(request: Request):
         cursor.close()
         conn.close()
 
-# Endpoint to fetch rules by batch_id
+# -------------------------------
+# Get rules by batch_id
+# -------------------------------
 @app.get("/rules")
 def get_rules(batch_id: str):
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
         sql = "SELECT * FROM rules WHERE batch_id = %s"
         cursor.execute(sql, (batch_id,))
         results = cursor.fetchall()
         if not results:
             return {"rules": []}
-        # Return only the rule_texts if needed
         return {"rules": [row["rule_text"] for row in results]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
