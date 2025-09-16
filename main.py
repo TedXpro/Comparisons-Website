@@ -109,7 +109,7 @@ async def upload_data(request: Request):
     cursor.close()
     conn.close()
 
-    dashboard_url = f"http://localhost:8000/dashboard?batch_id={batch_id}"
+    dashboard_url = f"https://comparisons-website.onrender.com/dashboard?batch_id={batch_id}"
     return {"message": "Data stored", "items_count": len(body), "dashboard_url": dashboard_url}
 
 # -------------------------------
