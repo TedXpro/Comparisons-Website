@@ -2,7 +2,7 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
+    <meta charset="=" UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Comparison Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -49,20 +49,20 @@
 
         .comparison-table {
             border-collapse: collapse;
-            font-size: 0.875rem;
+            font-size: 13px;
             width: 100%;
             table-layout: fixed;
-            min-width: 700px;
+            min-width: 900px;
         }
 
         .comparison-table th,
         .comparison-table td {
-            padding: 0.75rem 1rem;
+            padding: 2px 6px;
             text-align: left;
-            border: 1px solid #e5e7eb;
-            vertical-align: top;
-            word-break: break-word;
-            white-space: normal;
+            border: 1px solid #d1d5db;
+            vertical-align: middle;
+            white-space: nowrap;
+            line-height: 1.2;
         }
 
         .comparison-table th {
@@ -94,17 +94,32 @@
             }
         }
 
-        .input-field {
-            width: 100%;
-            max-width: 100%;
-            box-sizing: border-box;
-            padding: 0.5rem;
-            border-radius: 0.25rem;
-            border: 1px solid #d1d5db;
-            transition: border-color 0.2s;
+        .cell-inline {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
         }
 
-        .input-field:focus {
+        .cell-inline .original-value {
+            color: #6b7280;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        .cell-inline .input-field {
+            flex: 1 1 auto;
+            min-width: 60px;
+            max-width: 120px;
+            height: 20px;
+            padding: 1px 3px;
+            font-size: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 0;
+            box-sizing: border-box;
+        }
+
+        .cell-inline .input-field:focus {
             outline: none;
             border-color: #3b82f6;
         }
@@ -130,10 +145,10 @@
             cursor: not-allowed;
         }
 
-        /* Scrollable boxes */
         .table-scroll {
             max-height: 220px;
             overflow-y: auto;
+            overflow-x: auto;
         }
 
         .rules-box {
@@ -184,7 +199,7 @@
                     </svg>
                     <span class="ml-2">Loading data...</span>
                 </div>
-                <div class="overflow-x-auto flex-grow pb-4 table-scroll">
+                <div class="overflow-x-auto w-full flex-grow pb-4 table-scroll">
                     <table id="comparison-table" class="comparison-table hidden">
                         <thead>
                             <tr>
@@ -225,7 +240,6 @@
     </div>
 
     <script>
-        // === Backend URLs (edit here for easy changes) ===
         const API_BASE_URL = 'https://comparisons-website.onrender.com';
         const APPLY_CHANGES_URL = 'https://vk-holding.app.n8n.cloud/webhook-test/apply_changes';
 
@@ -290,8 +304,6 @@
 
                     displayFields.forEach(field => {
                         const cell = document.createElement('td');
-                        cell.className = "px-6 py-4 text-gray-500";
-
                         const fieldValue = item[field];
 
                         if (fieldValue && typeof fieldValue === 'object') {
@@ -300,12 +312,14 @@
                             const hasChanged = originalValue.toString() !== extractedValue.toString();
 
                             cell.innerHTML = `
-                <div><strong>${originalValue || '-'}</strong></div>
-                <input type="text" class="input-field mt-1"
-                  value="${extractedValue || ''}" 
-                  data-row-index="${rowIndex}" 
-                  data-field-name="${field}">
-              `;
+                                <div class="cell-inline">
+                                    <span class="original-value">${originalValue || '-'}</span>
+                                    <input type="text" class="input-field"
+                                        value="${extractedValue || ''}" 
+                                        data-row-index="${rowIndex}" 
+                                        data-field-name="${field}">
+                                </div>
+                            `;
 
                             if (hasChanged) cell.classList.add('changed-cell');
                         } else {
@@ -328,7 +342,7 @@
                             fullData[rowIndex][fieldName].extracted = newValue;
                         }
 
-                        const cell = e.target.parentElement.parentElement;
+                        const cell = e.target.closest('td');
                         const originalValue = fullData[rowIndex][fieldName].original;
                         if (newValue !== (originalValue ?? '')) {
                             cell.classList.add('changed-cell');
@@ -338,7 +352,6 @@
                     });
                 });
             };
-
 
             applyButton.addEventListener('click', async () => {
                 try {
@@ -362,8 +375,6 @@
                 }
             });
 
-
-
             if (batchId) {
                 fetch(`${API_BASE_URL}/get-data?batch_id=${batchId}`)
                     .then(res => res.json())
@@ -376,7 +387,6 @@
                         loadingIndicator.innerHTML = '<span class="text-red-500">Error fetching batch data.</span>';
                     });
 
-                // Fetch rules based on batch_id
                 fetch(`${API_BASE_URL}/rules?batch_id=${batchId}`)
                     .then(res => res.json())
                     .then(data => {

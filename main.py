@@ -1,9 +1,9 @@
 import uuid
-from fastapi import FastAPI, HTTPException, Request
+import os
+from fastapi import FastAPI, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 import psycopg2
 import psycopg2.extras
-import os
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -20,7 +20,6 @@ def get_db_connection():
         if not database_url:
             raise HTTPException(status_code=500, detail="Database URL not found in environment")
         
-        # Print connection attempt for debugging
         print(f"Attempting to connect to database...")
         conn = psycopg2.connect(database_url)
         print("Database connection successful!")
@@ -46,7 +45,6 @@ def serve_dashboard(batch_id: str):
 async def upload_data(request: Request):
     body = await request.json()
     
-    # Ensure body is a non-empty list
     if not body or not isinstance(body, list) or all(not bool(item) for item in body):
         raise HTTPException(status_code=400, detail="Empty or invalid payload. No data stored.")
     
@@ -167,3 +165,31 @@ def get_rules(batch_id: str):
     finally:
         cursor.close()
         conn.close()
+
+# ==================================================
+# PDF Upload + Serve
+# ==================================================
+UPLOAD_DIR = "/app/uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+@app.post("/upload-pdf")
+async def upload_pdf(file: UploadFile):
+    try:
+        file_id = str(uuid.uuid4()) + ".pdf"
+        file_path = os.path.join(UPLOAD_DIR, file_id)
+
+        with open(file_path, "wb") as f:
+            content = await file.read()
+            f.write(content)
+
+        public_url = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME', 'localhost')}/files/{file_id}"
+        return {"message": "File uploaded successfully", "url": public_url}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"File upload failed: {str(e)}")
+
+@app.get("/files/{file_name}")
+def serve_file(file_name: str):
+    file_path = os.path.join(UPLOAD_DIR, file_name)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(file_path, media_type="application/pdf")

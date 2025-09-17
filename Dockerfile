@@ -14,8 +14,11 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy app code
-COPY main.py ./
+COPY main.py ./ 
 COPY dashboard.html ./
+
+# Create uploads dir
+RUN mkdir -p /app/uploads
 
 # Expose port (FastAPI default is 8000)
 EXPOSE 8000
