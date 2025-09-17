@@ -2,7 +2,7 @@
 <html lang="en">
 
 <head>
-    <meta charset="=" UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Comparison Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -172,7 +172,7 @@
                 <div class="w-full flex-grow border border-gray-300 rounded-md overflow-hidden">
                     <iframe id="pdf-viewer" class="w-full h-full" src="" frameborder="0"></iframe>
                 </div>
-                <p id="pdf-message" class="mt-4 text-sm text-gray-500 text-center">Loading PDF from URL...</p>
+                <p id="pdf-message" class="mt-4 text-sm text-gray-500 text-center">Loading PDF...</p>
             </div>
 
             <!-- Right Pane for Data Comparison -->
@@ -260,6 +260,7 @@
             const params = new URLSearchParams(window.location.search);
             const batchId = params.get('batch_id');
             const pdfData = params.get('pdfData');
+            const pdfUrlParam = params.get('pdfUrl');
             const sessionId = params.get('session_Id');
             console.log("Session ID:", sessionId);
 
@@ -401,14 +402,13 @@
                 rulesBox.textContent = 'No batch_id provided, cannot fetch rules.';
             }
 
-            if (pdfData) {
-                try {
-                    const pdfUrl = `data:application/pdf;base64,${pdfData}`;
-                    pdfViewer.src = pdfUrl;
-                    pdfMessage.textContent = 'PDF loaded from URL.';
-                } catch (e) {
-                    pdfMessage.textContent = 'Error loading PDF.';
-                }
+            if (pdfUrlParam) {
+                pdfViewer.src = pdfUrlParam;
+                pdfMessage.textContent = 'PDF loaded from server.';
+            } else if (pdfData) {
+                const pdfUrl = `data:application/pdf;base64,${pdfData}`;
+                pdfViewer.src = pdfUrl;
+                pdfMessage.textContent = 'PDF loaded from URL.';
             } else {
                 pdfMessage.textContent = 'No PDF data found in URL.';
             }
