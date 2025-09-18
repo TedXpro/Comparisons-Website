@@ -203,6 +203,8 @@
                     <table id="comparison-table" class="comparison-table hidden">
                         <thead>
                             <tr>
+                                <th>Car Model</th>
+                                <th>Car Model Variant</th>
                                 <th>Condition Type</th>
                                 <th>Value</th>
                                 <th>Value EUR</th>
@@ -293,45 +295,78 @@
                 const firstItem = data[0];
                 if (firstItem) {
                     dealerNameElement.textContent = firstItem.dealer_name;
-                    carInfoElement.textContent = `${firstItem.car_mark} ${firstItem.car_model}`;
+                    carInfoElement.textContent = `${firstItem.car_mark}`;
                     summaryInfo.classList.remove('hidden');
                 }
 
                 loadingIndicator.classList.add('hidden');
                 comparisonTable.classList.remove('hidden');
 
-                data.forEach((item, rowIndex) => {
-                    const row = document.createElement('tr');
-                    const displayFields = ['condition_type', 'value', 'value_eur', 'remark'];
+                // Group by Car Model and Variant for row-span
+                const grouped = {};
+                data.forEach(item => {
+                    if (!grouped[item.car_model]) grouped[item.car_model] = {};
+                    if (!grouped[item.car_model][item.car_model_variant]) grouped[item.car_model][item.car_model_variant] = [];
+                    grouped[item.car_model][item.car_model_variant].push(item);
+                });
 
-                    displayFields.forEach(field => {
-                        const cell = document.createElement('td');
-                        const fieldValue = item[field];
+                Object.entries(grouped).forEach(([model, variants]) => {
+                    const modelRowSpan = Object.values(variants).reduce((sum, arr) => sum + arr.length, 0);
+                    let modelInserted = false;
 
-                        if (fieldValue && typeof fieldValue === 'object') {
-                            const originalValue = fieldValue.original ?? '';
-                            const extractedValue = fieldValue.extracted ?? '';
-                            const hasChanged = originalValue.toString() !== extractedValue.toString();
+                    Object.entries(variants).forEach(([variant, rows]) => {
+                        const variantRowSpan = rows.length;
+                        let variantInserted = false;
 
-                            cell.innerHTML = `
-                                <div class="cell-inline">
-                                    <span class="original-value">${originalValue || '-'}</span>
-                                    <input type="text" class="input-field"
-                                        value="${extractedValue || ''}" 
-                                        data-row-index="${rowIndex}" 
-                                        data-field-name="${field}">
-                                </div>
-                            `;
+                        rows.forEach((item, rowIndex) => {
+                            const row = document.createElement('tr');
 
-                            if (hasChanged) cell.classList.add('changed-cell');
-                        } else {
-                            cell.textContent = fieldValue ?? '-';
-                        }
+                            if (!modelInserted) {
+                                const cell = document.createElement('td');
+                                cell.rowSpan = modelRowSpan;
+                                cell.textContent = model;
+                                row.appendChild(cell);
+                                modelInserted = true;
+                            }
 
-                        row.appendChild(cell);
+                            if (!variantInserted) {
+                                const cell = document.createElement('td');
+                                cell.rowSpan = variantRowSpan;
+                                cell.textContent = variant;
+                                row.appendChild(cell);
+                                variantInserted = true;
+                            }
+
+                            ['condition_type', 'value', 'value_eur', 'remark'].forEach(field => {
+                                const cell = document.createElement('td');
+                                const fieldValue = item[field];
+
+                                if (fieldValue && typeof fieldValue === 'object') {
+                                    const originalValue = fieldValue.original ?? '';
+                                    const extractedValue = fieldValue.extracted ?? '';
+                                    const hasChanged = originalValue.toString() !== extractedValue.toString();
+
+                                    cell.innerHTML = `
+                                        <div class="cell-inline">
+                                            <span class="original-value">${originalValue || '-'}</span>
+                                            <input type="text" class="input-field"
+                                                value="${extractedValue || ''}"
+                                                data-row-index="${rowIndex}"
+                                                data-field-name="${field}">
+                                        </div>
+                                    `;
+
+                                    if (hasChanged) cell.classList.add('changed-cell');
+                                } else {
+                                    cell.textContent = fieldValue ?? '-';
+                                }
+
+                                row.appendChild(cell);
+                            });
+
+                            tableBody.appendChild(row);
+                        });
                     });
-
-                    tableBody.appendChild(row);
                 });
 
                 document.querySelectorAll('.input-field').forEach(input => {
