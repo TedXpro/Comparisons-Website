@@ -232,7 +232,7 @@
                     <p class="mb-2">Hello! How can I help you with your data?</p>
                 </div>
                 <div class="p-4 bg-gray-50 border-t border-gray-200">
-                    <input type="text" placeholder="Type your message..."
+                    <input id="chat-input" type="text" placeholder="Type your message..."
                         class="w-full p-2 rounded-md border border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400">
                 </div>
             </div>
@@ -241,7 +241,7 @@
 
     <script>
         const API_BASE_URL = 'https://comparisons-website.onrender.com';
-        const APPLY_CHANGES_URL = 'https://vk-holding.app.n8n.cloud/webhook-test/apply_changes';
+        const APPLY_CHANGES_URL = 'https://vk-holding.app.n8n.cloud/webhook/apply_changes';
 
         document.addEventListener('DOMContentLoaded', () => {
             const tableBody = document.getElementById('table-body');
@@ -255,6 +255,7 @@
             const dealerNameElement = document.getElementById('dealer-name');
             const carInfoElement = document.getElementById('car-info');
             const rulesBox = document.getElementById('rules-box');
+            const chatInput = document.getElementById('chat-input');
 
             let fullData = [];
             const params = new URLSearchParams(window.location.search);
@@ -356,17 +357,20 @@
 
             applyButton.addEventListener('click', async () => {
                 try {
+                    const chatMessage = chatInput.value || "";
                     const response = await fetch(APPLY_CHANGES_URL, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             sessionId: sessionId,
-                            data: fullData
+                            data: fullData,
+                            chat: chatMessage
                         })
                     });
 
                     if (response.ok) {
                         showStatus('Changes applied successfully!');
+                        chatInput.value = "";
                     } else {
                         showStatus('Failed to apply changes.', true);
                     }
