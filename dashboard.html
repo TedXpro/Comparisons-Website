@@ -242,7 +242,7 @@
     </div>
 
     <script>
-        const API_BASE_URL = 'https://comparisons-website.onrender.com';
+        const API_BASE_URL = 'http://localhost:5000';
         const APPLY_CHANGES_URL = 'https://vk-holding.app.n8n.cloud/webhook-test/apply_changes';
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -347,13 +347,16 @@
                                 if (fieldValue && typeof fieldValue === 'object') {
                                     const originalValue = fieldValue.original ?? '';
                                     const extractedValue = fieldValue.extracted ?? '';
+                                    const displayOriginal = originalValue.toString().trim() === '' ? 'N/A' : originalValue;
+                                    const displayExtracted = extractedValue.toString().trim() === '' ? 'N/A' : extractedValue;
+
                                     const hasChanged = originalValue.toString() !== extractedValue.toString();
 
                                     cell.innerHTML = `
                                         <div class="cell-inline">
-                                            <span class="original-value">${originalValue || '-'}<\/span>
+                                            <span class="original-value text-gray-500">${displayOriginal}<\/span>
                                             <input type="text" class="input-field"
-                                                value="${extractedValue || ''}"
+                                                value="${displayExtracted}"
                                                 data-row-index="${fullDataIndex}"
                                                 data-field-name="${field}">
                                         <\/div>
@@ -361,7 +364,7 @@
 
                                     if (hasChanged) cell.classList.add('changed-cell');
                                 } else {
-                                    cell.textContent = fieldValue ?? '-';
+                                    cell.textContent = fieldValue ?? 'N/A';
                                 }
 
                                 row.appendChild(cell);
