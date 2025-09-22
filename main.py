@@ -1,13 +1,13 @@
 import uuid
 import os
-from fastapi import FastAPI, HTTPException, Request, UploadFile
+from fastapi import FastAPI, HTTPException, Request, UploadFile, Depends
 from fastapi.responses import FileResponse
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+import secrets
 import psycopg2
 import psycopg2.extras
 from dotenv import load_dotenv
-from fastapi import Depends
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
-import secrets
+import bcrypt
 
 # Load environment variables
 load_dotenv()
@@ -23,9 +23,7 @@ def get_db_connection():
         if not database_url:
             raise HTTPException(status_code=500, detail="Database URL not found in environment")
         
-        print(f"Attempting to connect to database...")
         conn = psycopg2.connect(database_url)
-        print("Database connection successful!")
         return conn
     except psycopg2.Error as e:
         print(f"Database connection error: {e}")
@@ -38,19 +36,75 @@ def get_db_connection():
 # Basic Auth setup
 # -------------------------------
 security = HTTPBasic()
-DASHBOARD_USER = os.getenv("DASHBOARD_USER")
-DASHBOARD_PASS = os.getenv("DASHBOARD_PASS")
 
 def get_current_user(credentials: HTTPBasicCredentials = Depends(security)):
-    correct_username = secrets.compare_digest(credentials.username, DASHBOARD_USER)
-    correct_password = secrets.compare_digest(credentials.password, DASHBOARD_PASS)
-    if not (correct_username and correct_password):
-        raise HTTPException(
-            status_code=401,
-            detail="Unauthorized",
-            headers={"WWW-Authenticate": "Basic"},
-        )
-    return credentials.username
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        # Step 1: Fetch the user from the database
+        cursor.execute("SELECT password_hash FROM users WHERE username = %s", (credentials.username,))
+        user_record = cursor.fetchone()
+        
+        if not user_record:
+            # User not found
+            raise HTTPException(
+                status_code=401,
+                detail="Unauthorized: Incorrect username or password",
+                headers={"WWW-Authenticate": "Basic"},
+            )
+        
+        stored_password_hash = user_record[0].encode('utf-8')
+        
+        # Step 2: Verify the provided password against the stored hash
+        if not bcrypt.checkpw(credentials.password.encode('utf-8'), stored_password_hash):
+            # Password does not match
+            raise HTTPException(
+                status_code=401,
+                detail="Unauthorized: Incorrect username or password",
+                headers={"WWW-Authenticate": "Basic"},
+            )
+        
+        return credentials.username
+    finally:
+        cursor.close()
+        conn.close()
+
+# -------------------------------
+# User Registration Endpoint (for demonstration)
+# -------------------------------
+@app.post("/register")
+async def register_user(request: Request):
+    try:
+        user_data = await request.json()
+        username = user_data.get("username")
+        password = user_data.get("password")
+
+        if not username or not password:
+            raise HTTPException(status_code=400, detail="Username and password are required.")
+
+        # Hash the password
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        try:
+            # Insert the new user into the database
+            cursor.execute("INSERT INTO users (username, password_hash) VALUES (%s, %s)",
+                           (username, hashed_password.decode('utf-8')))
+            conn.commit()
+            return {"message": "User registered successfully."}
+        except psycopg2.IntegrityError:
+            conn.rollback()
+            raise HTTPException(status_code=409, detail="Username already exists.")
+        except Exception as e:
+            conn.rollback()
+            raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
+        finally:
+            cursor.close()
+            conn.close()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid request body: {str(e)}")
+
 
 # -------------------------------
 # Serve dashboard HTML (protected)
