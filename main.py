@@ -38,8 +38,8 @@ def get_db_connection():
 # Basic Auth setup
 # -------------------------------
 security = HTTPBasic()
-DASHBOARD_USER = os.getenv("DASHBOARD_USER", "team")
-DASHBOARD_PASS = os.getenv("DASHBOARD_PASS", "supersecret")
+DASHBOARD_USER = os.getenv("DASHBOARD_USER")
+DASHBOARD_PASS = os.getenv("DASHBOARD_PASS")
 
 def get_current_user(credentials: HTTPBasicCredentials = Depends(security)):
     correct_username = secrets.compare_digest(credentials.username, DASHBOARD_USER)
