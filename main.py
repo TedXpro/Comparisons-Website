@@ -5,6 +5,9 @@ from fastapi.responses import FileResponse
 import psycopg2
 import psycopg2.extras
 from dotenv import load_dotenv
+from fastapi import Depends
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+import secrets
 
 # Load environment variables
 load_dotenv()
@@ -32,10 +35,28 @@ def get_db_connection():
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 # -------------------------------
-# Serve dashboard HTML
+# Basic Auth setup
+# -------------------------------
+security = HTTPBasic()
+DASHBOARD_USER = os.getenv("DASHBOARD_USER", "team")
+DASHBOARD_PASS = os.getenv("DASHBOARD_PASS", "supersecret")
+
+def get_current_user(credentials: HTTPBasicCredentials = Depends(security)):
+    correct_username = secrets.compare_digest(credentials.username, DASHBOARD_USER)
+    correct_password = secrets.compare_digest(credentials.password, DASHBOARD_PASS)
+    if not (correct_username and correct_password):
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
+
+# -------------------------------
+# Serve dashboard HTML (protected)
 # -------------------------------
 @app.get("/dashboard")
-def serve_dashboard(batch_id: str):
+def serve_dashboard(batch_id: str, user: str = Depends(get_current_user)):
     return FileResponse("dashboard.html")
 
 # -------------------------------

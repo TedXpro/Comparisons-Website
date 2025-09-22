@@ -242,7 +242,7 @@
     </div>
 
     <script>
-        const API_BASE_URL = 'https://comparisons-website.onrender.com';
+        const API_BASE_URL = 'http://localhost:5000';
         const APPLY_CHANGES_URL = 'https://vk-holding.app.n8n.cloud/webhook-test/apply_changes';
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -337,6 +337,9 @@
                                 variantInserted = true;
                             }
 
+                            // Find the correct index in fullData for this item
+                            const fullDataIndex = fullData.findIndex(fd => fd === item);
+
                             ['condition_type', 'value', 'value_eur', 'remark'].forEach(field => {
                                 const cell = document.createElement('td');
                                 const fieldValue = item[field];
@@ -348,12 +351,12 @@
 
                                     cell.innerHTML = `
                                         <div class="cell-inline">
-                                            <span class="original-value">${originalValue || '-'}</span>
+                                            <span class="original-value">${originalValue || '-'}<\/span>
                                             <input type="text" class="input-field"
                                                 value="${extractedValue || ''}"
-                                                data-row-index="${rowIndex}"
+                                                data-row-index="${fullDataIndex}"
                                                 data-field-name="${field}">
-                                        </div>
+                                        <\/div>
                                     `;
 
                                     if (hasChanged) cell.classList.add('changed-cell');
