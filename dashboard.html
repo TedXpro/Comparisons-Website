@@ -397,6 +397,8 @@
             };
 
             applyButton.addEventListener('click', async () => {
+                applyButton.disabled = true;
+                applyButton.textContent = 'Applying...';
                 try {
                     const chatMessage = chatInput.value || "";
                     const response = await fetch(APPLY_CHANGES_URL, {
@@ -412,12 +414,17 @@
                     if (response.ok) {
                         showStatus('Changes applied successfully!');
                         chatInput.value = "";
+                        applyButton.textContent = 'Applied'; 
                     } else {
                         showStatus('Failed to apply changes.', true);
+                        applyButton.disabled = false; 
+                        applyButton.textContent = 'Apply Changes';
                     }
                 } catch (error) {
                     console.error('Error sending updated data:', error);
                     showStatus('Error applying changes.', true);
+                    applyButton.disabled = false; 
+                    applyButton.textContent = 'Apply Changes';
                 }
             });
 
